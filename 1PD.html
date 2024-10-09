@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>gp17023/PD1</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #444444;
+            color: white;
+            padding: 1em 0;
+            text-align: center;
+        }
+        h1 {
+            margin: 0;
+        }
+        .container {
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #333;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>1.PD Georgijs Pliska (gp17023)</h1>
+    </header>
+    <div class="container">
+        <h3>Bioinformātika - sequence alignment</h3>
+        <p>
+            Dotas divas virknes a un b alfabētā A. Ļausim mainīt virknes sekojošā veidā ar funkcijas edit(x,y) palīdzību, kur x un y pieder A+{gap},
+            iespējamās darbības: 1) Ievietot gap vienā no virknēm 2) izdzēst gap vienā no virknēm 3) samainīt 2 blakus esošus simbolus vienā no virknēm.
+            Nodefinēsim edit f-jas izmaksas cost(x,y). Tad izmaiņu virknes S kopējā izmaksās, būs visu izmaiņu izmaksu summa. Uzdevums ir atrast tādus a' un b',
+            kas pieder A+{gap}, |a'|=|b'|, a' ir iegūstams no a, pievienojot {gap} simbolus, bet b' iegūstams no b pievienojot tam {gap} simbolus un izmaksas,
+            kas nepieciešamas, lai no a' iegūtu b' ir vismazākās!
+        </p>
+    </div>
+    <div class="container">
+        <h2>Ievaddati</h2>
+        <label for="alf">Alfabets</label>
+        <input type="text" id="alf" value="ab"></br></br>
+        <label for="seq_a">Virkne A</label>
+        <input type="text" id="seq_a" value="ababab"></br></br>
+        <label for="seq_b">Virkne B</label>
+        <input type="text" id="seq_b" value="bababa"></br></br>
+        <label for="temp">Temperatura</label>
+        <input type="number" id="temp" value="1000"></br></br>
+        <label for="seq_b">cooling_rate</label>
+        <input type="number" id="cooling_rate" value="0.99"></br></br>
+        <label for="seq_b">stopping_temp</label>
+        <input type="number" id="stopping_temp" value="10"></br></br>
+
+        <button onclick="solve()">Solve</button>
+    </div>
+    <div class="container">
+       <h2>Risinājums</h2>
+       <p id="sol"></p>
+    </div>
+    <script>
+
+        var sol = document.getElementById("sol");
+        var steps = 0;
+        var misis = 0;
+        var finished = false;
+
+        function print_step(a,b,c){
+            sol.innerHTML += "Step: " + a[8];
+            sol.innerHTML += "</br>";
+            sol.innerHTML += "O_A: " + a[0];
+            sol.innerHTML += "</br>";
+            sol.innerHTML += "N_A: " + a[2];
+            sol.innerHTML += "</br>";
+            sol.innerHTML += "O_B: " + a[1];
+            sol.innerHTML += "</br>";
+            sol.innerHTML += "N_B: " + a[3];
+            sol.innerHTML += "</br>";
+            sol.innerHTML += "Cost: Old " + b + " // New " + c + " // Delta " + (c-b);
+            sol.innerHTML += "</br>";
+            sol.innerHTML += "</br></br>";
+        }
+
+        function print_final(a,b,c,d){
+            if (d){
+                sol.innerHTML += "Finished Succefuly:";
+                sol.innerHTML += "</br>";
+            }
+            else{
+                sol.innerHTML += "Program Failed";
+                sol.innerHTML += "</br>";
+            }
+            sol.innerHTML += "Solution: " + a[0];
+            sol.innerHTML += "</br>";
+            sol.innerHTML += "Steps Taken: " + b;
+            sol.innerHTML += "</br>";
+            sol.innerHTML += "Steps Missed: " + c;
+            sol.innerHTML += "</br>";
+        }
+
+        const countStars = (arr) => {
+            return arr.filter(item => item === '*').length;
+        };
+
+        function zero(input) {
+            return input === 0 ? 0 : 1;
+        }
+
+        function add_gap(values,r1,r2){
+            let tt = values[r1].slice();            
+            tt.splice(r2, 0, "*");
+            values[r1+2] = tt;
+            values[r1+6] = values[r1+4] + 1;
+        }
+     
+        function swap_symbols(values,r1,r2){
+            if (r2 == (values[r1].length-1)){r2--;}
+            let tt = values[r1].slice();
+            let temp = tt[r2]; 
+            tt[r2] = tt[r2+1];      
+            tt[r2+1] = temp;  
+            values[r1+2] = tt; 
+        }
+
+        function remove_gap(values,r1){
+            let tt = values[r1].slice();
+            for (let i_rem = 0; i_rem < values[r1].length; i_rem++) {
+                if (tt[i_rem] === '*') {
+                    tt.splice(i_rem, 1);
+                    break;
+                }
+                break;
+            } 
+            values[r1+2] = tt;       
+            values[r1+6] = values[r1+4] - 1;           
+        }
+
+        function solve() {
+            let alf = document.getElementById("alf").value.split("");
+            let seq_a_cur = document.getElementById("seq_a").value.split("");
+            let seq_b_cur = document.getElementById("seq_b").value.split("");
+            let temp = document.getElementById("temp").value;
+            let cooling_rate = document.getElementById("cooling_rate").value;
+            let stopping_temp = document.getElementById("stopping_temp").value;
+            
+            let gap1_cur = countStars(seq_a_cur);
+            let gap2_cur = countStars(seq_b_cur);
+            let seq_a_new = seq_a_cur;
+            let seq_b_new = seq_b_cur;
+            let gap1_new = 0;
+            let gap2_new = 0;
+
+            let values = [
+                    seq_a_cur, //0
+                    seq_b_cur, //1
+                    seq_a_new, //2
+                    seq_b_new, //3
+                    gap1_cur,  //4
+                    gap2_cur,  //5
+                    gap1_new,  //6
+                    gap2_new,  //7
+                    0];        //8
+            
+            sol.innerHTML = "";
+
+            solution = simulated_annealing(cost_function, values, temp, cooling_rate, stopping_temp);
+            print_final(solution,steps,misis,finished);
+        }
+
+        function simulated_annealing(cost_function, values, temp, cooling_rate, stopping_temp) {
+            let current_temp = temp;
+            let best_values = [values[0],values[1]].slice();
+            let best_score = cost_function(values[0],values[1]);
+
+            print_step(values)
+
+            while (current_temp > stopping_temp) {
+                
+                let current_score = cost_function(values[0],values[1]);
+                generate_values(values);                                             
+                let new_score = cost_function(values[2],values[3]);
+
+                values[8] += 1;  
+                print_step(values,current_score,new_score)
+
+                if (new_score == 0) {
+                    finished = true;
+                    best_values = [values[2],values[3]].slice();
+                    break;
+                }
+                
+                let choise = 0;
+
+                let deltaE = new_score - current_score;
+ 
+                if (deltaE < 0) {
+                    values[0] = values[2];
+                    values[1] = values[3];
+                    values[4] = values[6];
+                    values[5] = values[7];
+                    choise = 1;
+                    steps += 1;
+                    if (new_score < best_score) {
+                        best_values = [values[2],values[3]].slice();
+                        best_score = new_score;
+                        choise = 2;                        
+                    }
+                }                
+                else if (Math.random() < Math.exp(-deltaE / current_temp)) {
+                    values[0] = values[2];
+                    values[1] = values[3];
+                    values[4] = values[6];
+                    values[5] = values[7];
+                    choise = 3;
+                }  
+                if (choise == 0){misis += 1;}
+                current_temp *= cooling_rate;
+                              
+            }
+            return best_values;
+        }
+
+        function cost_function(x,y) {          
+            
+            let z_cost = 0;
+            let len_cost = x.length >= y.length ? x.length : y.length;
+
+            let small_cost = 10
+            let avrg_cost = 50
+            let big_cost = 100
+
+            for (let i = 0; i < len_cost; i++) {
+                if (x[i] == "*" && y[i] == "*" ){
+                    z_cost = z_cost + ((i*10) * big_cost)
+                }
+                else if (x[i] === undefined || y[i] === undefined ){
+                    z_cost = z_cost + ((i*10) * big_cost)
+                }
+                else if (x[i] == "*" || y[i] == "*" ){
+                    z_cost = z_cost + ((i*10) * avrg_cost)
+                }
+                else if (x[i] != y[i]){
+                    z_cost = z_cost + ((i*10) * small_cost)
+                }            
+            }
+            return z_cost;      
+           
+        }
+
+        function generate_values(values) {
+
+            let r1 = Math.floor(Math.random() * 2);
+            
+            let len = values[r1].length;
+            let r2 = Math.floor(Math.random() * len);
+
+            let gaps = values[r1+4];
+            let r3 = Math.floor(Math.random() * (2 + zero(gaps)) ) + 1;
+            
+            switch (r3) {
+                case 1:
+                    add_gap(values,r1,r2);                                                     
+                    break;
+                case 2:                
+                    swap_symbols(values,r1,r2);                     
+                    break;                    
+                case 3:
+                    remove_gap(values,r1);                     
+                    break;
+                default:
+                    console.log("You should not see this");
+            }
+        }
+
+    </script>
+</body>
+</html>
